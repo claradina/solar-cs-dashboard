@@ -84,6 +84,7 @@
     .briefing-header strong { font-size: 13px; font-weight: 500; }
     .briefing-header button { font-size: 12px; background: none; border: none; cursor: pointer; color: var(--text2); }
     .briefing-content { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+    .briefing-note { margin-top: 10px; font-size: 12px; color: #854F0B; }
     .loading-dots span { display: inline-block; animation: blink 1.2s infinite; }
     .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
     .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
@@ -190,10 +191,11 @@
       <button onclick="document.getElementById('briefingPanel').classList.remove('visible')">✕ close</button>
     </div>
     <div class="briefing-content" id="briefingContent"></div>
+    <div class="briefing-note" id="briefingNote" aria-live="polite"></div>
   </div>
 
   <footer>
-    Built with Claude AI · Solar CS Portfolio Project · Data is fictional and for demonstration purposes only
+    Built with AI briefing backend · Solar CS Portfolio Project · Data is fictional and for demonstration purposes only
   </footer>
 </div>
 
@@ -297,17 +299,26 @@ Structure: 1) Account snapshot (2 sentences), 2) Main risk or opportunity (2 sen
     const res = await fetch('/api/briefing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ account: a })
     });
     const data = await res.json();
-    const text = data.content?.find(b => b.type === 'text')?.text || 'Could not generate briefing.';
-    content.textContent = text;
+    const note = document.getElementById('briefingNote');
+
+    if (!res.ok) {
+      content.textContent = data.error || `Error ${res.status} from backend.`;
+      note.textContent = data.details ? `Detalhes: ${data.details}` : '';
+    } else {
+      const text = data.text || 'Could not generate briefing.';
+      content.textContent = text;
+      if (data.provider === 'local-fallback') {
+        note.textContent = 'Sem chave de API Hugging Face. Usando geração local como fallback para manter o briefing grátis.';
+      } else {
+        note.textContent = '';
+      }
+    }
   } catch(e) {
     content.textContent = 'Error connecting to AI. Please try again.';
+    document.getElementById('briefingNote').textContent = `Erro de conexão: ${e.message}`;
   }
   btn.disabled = false;
   btn.textContent = 'Generate briefing ↗';
