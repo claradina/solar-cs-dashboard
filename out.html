@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar CS Health Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f9f9f8;
+      --bg2: #f1f0ec;
+      --bg3: #ffffff;
+      --text: #1a1a18;
+      --text2: #6b6b67;
+      --border: rgba(0,0,0,0.1);
+      --border2: rgba(0,0,0,0.18);
+      --green: #3B6D11;
+      --green-bg: #EAF3DE;
+      --green-text: #3B6D11;
+      --amber: #854F0B;
+      --amber-bg: #FAEEDA;
+      --amber-text: #854F0B;
+      --red: #A32D2D;
+      --red-bg: #FCEBEB;
+      --red-text: #A32D2D;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18;
+        --bg2: #242422;
+        --bg3: #2c2c2a;
+        --text: #f0ede8;
+        --text2: #9a9a96;
+        --border: rgba(255,255,255,0.1);
+        --border2: rgba(255,255,255,0.18);
+        --green-bg: #173404;
+        --green-text: #C0DD97;
+        --amber-bg: #412402;
+        --amber-text: #FAC775;
+        --red-bg: #501313;
+        --red-text: #F7C1C1;
+      }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 8px; }
+    .top-bar h1 { font-size: 18px; font-weight: 500; color: var(--text); }
+    .top-bar p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .top-bar .updated { font-size: 11px; color: var(--text2); margin-top: 4px; }
+    .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+    .metric { background: var(--bg2); border-radius: var(--radius-md); padding: 14px 16px; }
+    .metric-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .metric-value { font-size: 22px; font-weight: 500; }
+    .metric-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .section-title { font-size: 10px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; margin-top: 1.5rem; }
+    .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 0.5rem; }
+    .chart-card { background: var(--bg3); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; }
+    .chart-card-title { font-size: 11px; color: var(--text2); margin-bottom: 12px; }
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+    .filter-bar label { font-size: 12px; color: var(--text2); }
+    select { font-size: 12px; padding: 5px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: var(--bg3); color: var(--text); cursor: pointer; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+    thead th { font-size: 10px; font-weight: 500; color: var(--text2); text-align: left; padding: 6px 10px; border-bottom: 0.5px solid var(--border); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    tbody tr { border-bottom: 0.5px solid var(--border); transition: background 0.12s; }
+    tbody tr:hover { background: var(--bg2); }
+    tbody td { padding: 10px 10px; vertical-align: middle; }
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-bar-bg { width: 52px; height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 4px; }
+    .badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .badge-green { background: var(--green-bg); color: var(--green-text); }
+    .badge-amber { background: var(--amber-bg); color: var(--amber-text); }
+    .badge-red { background: var(--red-bg); color: var(--red-text); }
+    .ai-btn { font-size: 11px; padding: 5px 10px; cursor: pointer; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: transparent; color: var(--text); white-space: nowrap; transition: background 0.12s; }
+    .ai-btn:hover { background: var(--bg2); }
+    .ai-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .briefing-panel { margin-top: 1.5rem; background: var(--bg3); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 1.25rem; display: none; }
+    .briefing-panel.visible { display: block; }
+    .briefing-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .briefing-header strong { font-size: 13px; font-weight: 500; }
+    .briefing-header button { font-size: 12px; background: none; border: none; cursor: pointer; color: var(--text2); }
+    .briefing-content { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+    .briefing-note { margin-top: 10px; font-size: 12px; color: #854F0B; }
+    .loading-dots span { display: inline-block; animation: blink 1.2s infinite; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+    .account-name { font-weight: 500; }
+    .account-country { font-size: 11px; color: var(--text2); }
+    .tickets-high { color: #E24B4A; }
+    footer { margin-top: 3rem; padding-top: 1rem; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text2); text-align: center; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <h1>Customer Health Dashboard</h1>
+      <p>Solar Energy Portfolio · Q2 2025 · 12 accounts</p>
+    </div>
+    <span class="updated">Last updated: Apr 27, 2025</span>
+  </div>
+
+  <div class="metrics-row">
+    <div class="metric">
+      <div class="metric-label">Portfolio NRR</div>
+      <div class="metric-value" style="color:#3B6D11">108%</div>
+      <div class="metric-sub">+3pp vs Q1</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">At-risk accounts</div>
+      <div class="metric-value" style="color:#A32D2D">3</div>
+      <div class="metric-sub">Churn risk detected</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Avg health score</div>
+      <div class="metric-value">71</div>
+      <div class="metric-sub">out of 100</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Expansion MRR</div>
+      <div class="metric-value">$12.4k</div>
+      <div class="metric-sub">3 upsell opportunities</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Open tickets</div>
+      <div class="metric-value">14</div>
+      <div class="metric-sub">4 critical</div>
+    </div>
+  </div>
+
+  <div class="section-title">Portfolio overview</div>
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-card-title">Health distribution</div>
+      <div style="position:relative;height:140px;"><canvas id="distChart" role="img" aria-label="Health score distribution: 5 healthy, 4 at risk, 3 critical">5 healthy, 4 at risk, 3 critical.</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">NRR trend (last 6 months)</div>
+      <div style="position:relative;height:140px;"><canvas id="nrrChart" role="img" aria-label="NRR trend from Nov 2024 to Apr 2025, rising from 98% to 108%">NRR trended from 98% to 108%.</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Platform adoption by account</div>
+      <div style="position:relative;height:140px;"><canvas id="adoptChart" role="img" aria-label="Platform adoption rate per client, varies from 28% to 95%">Adoption varies from 28% to 95%.</canvas></div>
+    </div>
+  </div>
+
+  <div class="section-title">Account list</div>
+  <div class="filter-bar">
+    <label>Filter:</label>
+    <select id="statusFilter">
+      <option value="all">All accounts</option>
+      <option value="healthy">Healthy</option>
+      <option value="at-risk">At risk</option>
+      <option value="critical">Critical</option>
+    </select>
+    <select id="sortFilter">
+      <option value="score-asc">Lowest score first</option>
+      <option value="score-desc">Highest score first</option>
+      <option value="name">Name A–Z</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Segment</th>
+          <th>Health score</th>
+          <th>Status</th>
+          <th>Last contact</th>
+          <th>Tickets</th>
+          <th>Adoption</th>
+          <th>MRR</th>
+          <th>AI briefing</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="briefing-panel" id="briefingPanel">
+    <div class="briefing-header">
+      <strong id="briefingTitle">AI Account Briefing</strong>
+      <button onclick="document.getElementById('briefingPanel').classList.remove('visible')">✕ close</button>
+    </div>
+    <div class="briefing-content" id="briefingContent"></div>
+    <div class="briefing-note" id="briefingNote" aria-live="polite"></div>
+  </div>
+
+  <footer>
+    Built with AI briefing backend · Solar CS Portfolio Project · Data is fictional and for demonstration purposes only
+  </footer>
+</div>
+
+<script>
+const accounts = [
+  { name: "SunPeak Energy", segment: "Commercial", score: 88, status: "healthy", lastContact: "2 days ago", tickets: 1, adoption: 91, mrr: 4200, country: "USA", installedKw: 480, renewalIn: "8 months", notes: "Expanding to 3rd facility. Champion is VP of Ops." },
+  { name: "Volta Solar GmbH", segment: "Enterprise", score: 82, status: "healthy", lastContact: "4 days ago", tickets: 0, adoption: 87, mrr: 7800, country: "Germany", installedKw: 1200, renewalIn: "5 months", notes: "Using all platform modules. QBR scheduled for May." },
+  { name: "Helios Renewables", segment: "SMB", score: 74, status: "healthy", lastContact: "1 week ago", tickets: 2, adoption: 69, mrr: 1800, country: "USA", installedKw: 95, renewalIn: "10 months", notes: "Low adoption on monitoring module. Needs training session." },
+  { name: "Brisa Verde Ltda", segment: "SMB", score: 68, status: "healthy", lastContact: "5 days ago", tickets: 1, adoption: 72, mrr: 2100, country: "Brazil", installedKw: 140, renewalIn: "7 months", notes: "Growing team. New technical contact onboarding." },
+  { name: "Nordic Sun AS", segment: "Commercial", score: 79, status: "healthy", lastContact: "3 days ago", tickets: 0, adoption: 83, mrr: 3500, country: "Norway", installedKw: 320, renewalIn: "9 months", notes: "Strong relationship. Upsell opportunity for storage module." },
+  { name: "Solara UK Ltd", segment: "Enterprise", score: 55, status: "at-risk", lastContact: "3 weeks ago", tickets: 3, adoption: 44, mrr: 6200, country: "UK", installedKw: 890, renewalIn: "3 months", notes: "Champion left company. New stakeholder not yet engaged. Renewal at risk." },
+  { name: "EcoWatt France", segment: "Commercial", score: 48, status: "at-risk", lastContact: "2 weeks ago", tickets: 4, adoption: 38, mrr: 3900, country: "France", installedKw: 260, renewalIn: "2 months", notes: "3 unresolved critical tickets. Billing dispute pending since March." },
+  { name: "Lumina Solar SpA", segment: "SMB", score: 61, status: "at-risk", lastContact: "10 days ago", tickets: 2, adoption: 55, mrr: 1500, country: "Italy", installedKw: 78, renewalIn: "4 months", notes: "Adoption dropped after personnel change. No login in 18 days." },
+  { name: "SolarPath Inc", segment: "Enterprise", score: 31, status: "critical", lastContact: "5 weeks ago", tickets: 5, adoption: 28, mrr: 8900, country: "USA", installedKw: 1450, renewalIn: "1 month", notes: "NPS score: 3. Filed formal complaint. Escalation to leadership needed." },
+  { name: "Enersol México", segment: "Commercial", score: 36, status: "critical", lastContact: "4 weeks ago", tickets: 3, adoption: 34, mrr: 2800, country: "Mexico", installedKw: 195, renewalIn: "6 weeks", notes: "Platform performance issues reported. Engineering ticket open 22 days." },
+  { name: "BrightGrid AU", segment: "SMB", score: 42, status: "critical", lastContact: "3 weeks ago", tickets: 2, adoption: 41, mrr: 1200, country: "Australia", installedKw: 62, renewalIn: "2 months", notes: "Payment delayed 45 days. Limited engagement since onboarding." },
+  { name: "Sunverde Ibérica", segment: "Commercial", score: 95, status: "healthy", lastContact: "yesterday", tickets: 0, adoption: 95, mrr: 4600, country: "Spain", installedKw: 410, renewalIn: "11 months", notes: "Top account. Advocate. Referred 2 new leads last quarter." }
+];
+
+function scoreColor(s) {
+  if (s >= 70) return "#639922";
+  if (s >= 50) return "#BA7517";
+  return "#E24B4A";
+}
+
+function statusBadge(s) {
+  if (s === "healthy") return `<span class="badge badge-green">Healthy</span>`;
+  if (s === "at-risk") return `<span class="badge badge-amber">At risk</span>`;
+  return `<span class="badge badge-red">Critical</span>`;
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+  data.forEach(a => {
+    const idx = accounts.indexOf(a);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="account-name">${a.name}</span><br><span class="account-country">${a.country}</span></td>
+      <td style="color:var(--text2)">${a.segment}</td>
+      <td>
+        <div class="score-bar-wrap">
+          <span style="font-weight:500;min-width:24px;color:${scoreColor(a.score)}">${a.score}</span>
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:${a.score}%;background:${scoreColor(a.score)}"></div></div>
+        </div>
+      </td>
+      <td>${statusBadge(a.status)}</td>
+      <td style="color:var(--text2);white-space:nowrap">${a.lastContact}</td>
+      <td style="text-align:center" class="${a.tickets >= 4 ? 'tickets-high' : ''}">${a.tickets}</td>
+      <td style="color:var(--text2)">${a.adoption}%</td>
+      <td>$${a.mrr.toLocaleString()}</td>
+      <td><button class="ai-btn" onclick="generateBriefing(${idx}, this)">Generate briefing ↗</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function applyFilters() {
+  const status = document.getElementById("statusFilter").value;
+  const sort = document.getElementById("sortFilter").value;
+  let data = [...accounts];
+  if (status !== "all") data = data.filter(a => a.status === status);
+  if (sort === "score-asc") data.sort((a,b) => a.score - b.score);
+  else if (sort === "score-desc") data.sort((a,b) => b.score - a.score);
+  else data.sort((a,b) => a.name.localeCompare(b.name));
+  renderTable(data);
+}
+
+document.getElementById("statusFilter").addEventListener("change", applyFilters);
+document.getElementById("sortFilter").addEventListener("change", applyFilters);
+renderTable(accounts);
+
+async function generateBriefing(idx, btn) {
+  const a = accounts[idx];
+  btn.disabled = true;
+  btn.textContent = "Loading...";
+  const panel = document.getElementById("briefingPanel");
+  const content = document.getElementById("briefingContent");
+  document.getElementById("briefingTitle").textContent = `AI Briefing — ${a.name}`;
+  content.innerHTML = `<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span> Generating briefing...`;
+  panel.classList.add("visible");
+  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  const prompt = `You are a Customer Success Manager preparing for a client call in the solar energy industry. Generate a concise pre-call briefing (max 180 words) for the following account. Use plain text, no markdown headers.
+
+Account: ${a.name}
+Country: ${a.country}
+Segment: ${a.segment}
+Health Score: ${a.score}/100 (${a.status})
+Platform Adoption: ${a.adoption}%
+MRR: $${a.mrr}
+Open Tickets: ${a.tickets}
+Last Contact: ${a.lastContact}
+Installed Capacity: ${a.installedKw} kW
+Renewal in: ${a.renewalIn}
+Internal notes: ${a.notes}
+
+Structure: 1) Account snapshot (2 sentences), 2) Main risk or opportunity (2 sentences), 3) Recommended talking points for the call (3 bullet points using - dash), 4) Suggested next action.`;
+
+  try {
+    const res = await fetch('/api/briefing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account: a })
+    });
+
+    const raw = await res.text();
+    let data;
+    const note = document.getElementById('briefingNote');
+
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      if (!res.ok) {
+        content.textContent = `Backend error ${res.status}: ${raw.slice(0, 250)}`;
+      } else {
+        content.textContent = raw || 'Could not generate briefing.';
+      }
+      note.textContent = `Non-JSON response received from the backend.`;
+      return;
+    }
+
+    if (!res.ok) {
+      content.textContent = data.error || `Error ${res.status} from backend.`;
+      note.textContent = data.details ? `Details: ${data.details}` : '';
+    } else {
+      const text = data.text || 'Could not generate briefing.';
+      content.textContent = text;
+      if (data.provider === 'local-fallback') {
+        note.textContent = 'No Hugging Face API key found. Using local generation fallback to keep the briefing free.';
+      } else {
+        note.textContent = '';
+      }
+    }
+  } catch(e) {
+    content.textContent = 'Error connecting to AI. Please try again.';
+    document.getElementById('briefingNote').textContent = `Connection error: ${e.message}`;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Generate briefing ↗';
+}
+
+const isDark = matchMedia("(prefers-color-scheme: dark)").matches;
+const gridColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+const textColor = isDark ? "#9a9a96" : "#888";
+
+new Chart(document.getElementById("distChart"), {
+  type: "doughnut",
+  data: {
+    labels: ["Healthy", "At risk", "Critical"],
+    datasets: [{ data: [5, 4, 3], backgroundColor: ["#639922","#BA7517","#E24B4A"], borderWidth: 0 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: "right", labels: { font: { size: 11 }, color: textColor, boxWidth: 10, padding: 8 } } }
+  }
+});
+
+new Chart(document.getElementById("nrrChart"), {
+  type: "line",
+  data: {
+    labels: ["Nov","Dec","Jan","Feb","Mar","Apr"],
+    datasets: [{ label: "NRR", data: [98,101,103,100,105,108], borderColor: "#3B6D11", backgroundColor: "rgba(99,153,34,0.08)", fill: true, tension: 0.4, pointRadius: 3, borderWidth: 2 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { font: { size: 10 }, color: textColor }, grid: { color: gridColor } },
+      y: { ticks: { font: { size: 10 }, color: textColor, callback: v => v + "%" }, grid: { color: gridColor }, min: 94 }
+    }
+  }
+});
+
+const top6 = [...accounts].sort((a,b) => b.adoption - a.adoption).slice(0,6);
+new Chart(document.getElementById("adoptChart"), {
+  type: "bar",
+  data: {
+    labels: top6.map(a => a.name.split(" ")[0]),
+    datasets: [{ data: top6.map(a => a.adoption), backgroundColor: top6.map(a => scoreColor(a.score)), borderRadius: 3, borderWidth: 0 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { font: { size: 10 }, color: textColor, maxRotation: 30, autoSkip: false }, grid: { display: false } },
+      y: { ticks: { font: { size: 10 }, color: textColor, callback: v => v + "%" }, grid: { color: gridColor }, max: 100 }
+    }
+  }
+});
+</script>
+</body>
+</html>
