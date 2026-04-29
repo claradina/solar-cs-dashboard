@@ -5,22 +5,22 @@ function buildPrompt(account) {
 }
 
 function localBriefing(account) {
-  const snapshot = `O cliente ${account.name} (${account.segment}, ${account.country}) tem um health score de ${account.score}/100 e adoção de ${account.adoption}% da plataforma.`;
+  const snapshot = `The customer ${account.name} (${account.segment}, ${account.country}) has a health score of ${account.score}/100 and ${account.adoption}% platform adoption.`;
   const riskOrOpportunity = account.score >= 70
-    ? `A conta está bem posicionada, com boa adoção e poucos tickets, então a oportunidade é fortalecer o relacionamento e promover expansão.`
+    ? `The account is well positioned with strong adoption and few tickets, so the opportunity is to deepen the relationship and push for expansion.`
     : account.score >= 50
-      ? `Há uma oportunidade de melhorar a adoção funcional e reduzir tickets antes do período de renovação.`
-      : `O principal risco é a baixa adoção e os tickets críticos abertos, especialmente com a renovação próxima.`;
+      ? `There is an opportunity to improve functional adoption and reduce tickets before the renewal period.`
+      : `The main risk is low adoption and critical open tickets, especially with the renewal coming up.`;
   const bullets = [
-    `Revisar o status dos tickets atuais e alinhar próximos passos com o time de suporte.`, 
+    `Review current ticket status and align next steps with the support team.`, 
     account.score < 50
-      ? `Priorizar engajamento com o novo ponto de contato e revalidar expectativas.`
-      : `Confirmar quais recursos têm maior valor para o cliente nesta fase.`,
-    `Sugerir ação clara para a próxima reunião, considerando a renovação e a saúde da conta.`
+      ? `Prioritize engagement with the new contact and revalidate expectations.`
+      : `Confirm which features provide the most value for the customer at this stage.`,
+    `Suggest a clear action for the next meeting, considering renewal timing and account health.`
   ];
   const action = account.score < 50
-    ? `Próxima ação: agendar uma chamada de recuperação e resolver os principais tickets.`
-    : `Próxima ação: manter o acompanhamento e preparar recomendações para o próximo checkpoint.`;
+    ? `Next action: schedule a recovery call and resolve the highest-priority tickets.`
+    : `Next action: continue monitoring and prepare recommendations for the next checkpoint.`;
 
   return `${snapshot}\n\n${riskOrOpportunity}\n\n${bullets.map(item => `- ${item}`).join('\n')}\n\n${action}`;
 }

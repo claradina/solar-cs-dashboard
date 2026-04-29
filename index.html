@@ -301,24 +301,38 @@ Structure: 1) Account snapshot (2 sentences), 2) Main risk or opportunity (2 sen
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ account: a })
     });
-    const data = await res.json();
+
+    const raw = await res.text();
+    let data;
     const note = document.getElementById('briefingNote');
+
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      if (!res.ok) {
+        content.textContent = `Backend error ${res.status}: ${raw.slice(0, 250)}`;
+      } else {
+        content.textContent = raw || 'Could not generate briefing.';
+      }
+      note.textContent = `Non-JSON response received from the backend.`;
+      return;
+    }
 
     if (!res.ok) {
       content.textContent = data.error || `Error ${res.status} from backend.`;
-      note.textContent = data.details ? `Detalhes: ${data.details}` : '';
+      note.textContent = data.details ? `Details: ${data.details}` : '';
     } else {
       const text = data.text || 'Could not generate briefing.';
       content.textContent = text;
       if (data.provider === 'local-fallback') {
-        note.textContent = 'Sem chave de API Hugging Face. Usando geração local como fallback para manter o briefing grátis.';
+        note.textContent = 'No Hugging Face API key found. Using local generation fallback to keep the briefing free.';
       } else {
         note.textContent = '';
       }
     }
   } catch(e) {
     content.textContent = 'Error connecting to AI. Please try again.';
-    document.getElementById('briefingNote').textContent = `Erro de conexão: ${e.message}`;
+    document.getElementById('briefingNote').textContent = `Connection error: ${e.message}`;
   }
   btn.disabled = false;
   btn.textContent = 'Generate briefing ↗';
