@@ -33,7 +33,16 @@ async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const account = req.body?.account;
+  let payload = req.body;
+  if (typeof payload === 'string' && payload.length) {
+    try {
+      payload = JSON.parse(payload);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid JSON payload' });
+    }
+  }
+
+  const account = payload?.account;
   if (!account) {
     return res.status(400).json({ error: 'Missing account payload' });
   }
