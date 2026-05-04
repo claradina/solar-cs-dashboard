@@ -8,6 +8,7 @@ function buildPrompt(account) {
   return `<s>[INST] You are a Customer Success Manager in the solar energy industry preparing for a client call. Generate a concise pre-call briefing (max 180 words) in plain text with no markdown headers.
 
 
+
 Account: ${account.name}
 Country: ${account.country}
 Segment: ${account.segment}
