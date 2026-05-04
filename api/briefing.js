@@ -1,8 +1,7 @@
 // briefing.js — Secure proxy for AI briefing generation
 // Uses Hugging Face Inference API (free tier) with Mistral-7B-Instruct
 
-const HUGGING_FACE_MODEL = 'mistralai/Mistral-7B-Instruct-v0.3';
-
+const HUGGING_FACE_MODEL = 'HuggingFaceH4/zephyr-7b-beta';
 // Builds the prompt sent to the AI model
 function buildPrompt(account) {
   return `<s>[INST] You are a Customer Success Manager in the solar energy industry preparing for a client call. Generate a concise pre-call briefing (max 180 words) in plain text with no markdown headers.
