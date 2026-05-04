@@ -69,8 +69,20 @@ async function handler(req, res) {
   const account = payload?.account;
   if (!account) return res.status(400).json({ error: 'Missing account data' });
 
-  if (!process.env.HUGGING_FACE_API_KEY) {
-    return res.status(200).json({ text: localBriefing(account), provider: 'local-fallback' });
+  const apiKey = process.env.HUGGING_FACE_API_KEY;
+  if (!apiKey) {
+    return res.status(200).json({ 
+      text: localBriefing(account), 
+      provider: 'local-fallback',
+      debug: 'API key is undefined or empty'
+    });
+  }
+  if (apiKey.length < 10) {
+    return res.status(200).json({ 
+      text: localBriefing(account), 
+      provider: 'local-fallback',
+      debug: `API key too short: ${apiKey.length} chars`
+    });
   }
 
   const prompt = buildPrompt(account);
